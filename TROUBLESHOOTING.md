@@ -130,9 +130,40 @@ Also ensure the nginx config doesn't reference files that only exist in custom i
 
 ---
 
+### 7. PHP Files Download Instead of Rendering
+
+**Symptoms:** Accessing `/wordpress/wp-admin/` or other PHP files triggers a file download instead of showing the page. Response headers show `Content-Type: application/octet-stream`.
+
+**Cause:** A more specific nginx location block for `/wordpress/*.php` is matching but missing `fastcgi_pass` directive, so nginx serves the raw PHP file instead of processing it through PHP-FPM.
+
+**Diagnosis:**
+```bash
+# Check response headers
+curl -sI https://playground.finder.dev/wordpress/wp-admin/index.php
+
+# If Content-Type is application/octet-stream, PHP isn't being processed
+```
+
+**Solution:** Ensure all PHP location blocks include both `fastcgi_pass` and `include fastcgi.conf`:
+
+```nginx
+# In nginx/includes/wordpress.conf
+location ~ ^/wordpress/.*\.php$ {
+    try_files $uri =404;
+    fastcgi_split_path_info ^(.+\.php)(/.+)$;
+    fastcgi_pass php-fpm:9000;
+    fastcgi_index index.php;
+    include /etc/nginx/fastcgi.conf;
+}
+```
+
+After fixing, reload nginx: `docker exec wp-playground-nginx nginx -s reload`
+
+---
+
 ## Runtime Issues
 
-### 7. Containers Not Starting
+### 8. Containers Not Starting
 
 **Symptoms:** `make status` shows containers in "Restarting" state.
 
@@ -150,7 +181,7 @@ docker logs wp-playground-php-fpm
 
 ---
 
-### 8. Site Not Accessible
+### 9. Site Not Accessible
 
 **Symptoms:** Browser shows "Site can't be reached" or connection refused.
 
@@ -179,7 +210,7 @@ docker logs wp-playground-php-fpm
 
 ---
 
-### 9. Database Connection Failed in WordPress
+### 10. Database Connection Failed in WordPress
 
 **Symptoms:** WordPress shows "Error establishing a database connection".
 
@@ -204,7 +235,7 @@ docker logs wp-playground-php-fpm
 
 ---
 
-### 10. PHP Errors or White Screen
+### 11. PHP Errors or White Screen
 
 **Diagnosis:**
 ```bash
@@ -228,7 +259,7 @@ tail -f ~/logs/wp-playground/*.log
 
 ## Volume Mount Issues
 
-### 11. Changes Not Reflecting
+### 12. Changes Not Reflecting
 
 **Symptoms:** Code changes in `wordpress-core/src/` don't appear on the site.
 
@@ -241,7 +272,7 @@ tail -f ~/logs/wp-playground/*.log
 
 ---
 
-### 12. Permission Denied on Uploads
+### 13. Permission Denied on Uploads
 
 **Symptoms:** Cannot upload files via WordPress admin.
 
@@ -264,6 +295,7 @@ make restart
 | Network conflict | `docker network rm wp-playground && make restart` |
 | Bad Gateway (502) | Check nginx has `fastcgi_pass php-fpm:9000;` in PHP location |
 | Nginx config not loading | Mount to `/etc/nginx/conf.d/default.conf` not `sites-enabled` |
+| PHP files download | Add `fastcgi_pass php-fpm:9000;` to WordPress PHP location block |
 | Nginx config error | Check logs: `docker logs wp-playground-nginx` |
 | DB access denied | Try without password: `docker exec coeval-mysql mysql -uroot -e "..."` |
 | Site not loading | Check: `make status`, hosts file, Traefik logs |

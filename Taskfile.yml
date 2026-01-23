@@ -1,0 +1,192 @@
+version: '3'
+
+vars:
+  COMPOSE_FILE: docker-compose.yml
+  PROJECT_NAME: wp-playground
+
+tasks:
+  default:
+    cmds:
+      - task --list
+    silent: true
+
+  setup:
+    desc: "Initial setup for WordPress Playground environment"
+    cmds:
+      - task: create-env-files
+      - task: create-networks
+      - task: create-log-dirs
+      - task: composer-install
+      - task: create-src-dir
+      - task: start
+      - echo "Setup complete! Access the site at https://playground.finder.dev"
+      - echo "Note: Make sure coeval-mysql is running from the root dev docker-compose.yml"
+
+  create-env-files:
+    desc: "Create environment files if they don't exist"
+    cmds:
+      - |
+        if [ ! -f config/playground.secrets.env ]; then
+          touch config/playground.secrets.env
+          echo "Created config/playground.secrets.env"
+        fi
+      - |
+        if [ ! -f config/playground.local.env ]; then
+          touch config/playground.local.env
+          echo "Created config/playground.local.env"
+        fi
+    silent: true
+
+  create-networks:
+    desc: "Create required external Docker networks if they don't exist"
+    cmds:
+      - docker network create mysql 2>/dev/null || true
+      - docker network create redis 2>/dev/null || true
+      - docker network create traefik 2>/dev/null || true
+      - echo "External networks created/verified (wp-playground network managed by docker-compose)"
+    silent: true
+
+  create-log-dirs:
+    desc: "Create log directories"
+    cmds:
+      - mkdir -p ${DEVHOME:-$HOME}/logs/wp-playground
+    silent: true
+
+  create-src-dir:
+    desc: "Create src directory for custom plugins/themes if it doesn't exist"
+    cmds:
+      - mkdir -p wordpress-core/src/themes
+      - mkdir -p wordpress-core/src/plugins
+      - mkdir -p wordpress-core/src/mu-plugins
+    silent: true
+
+  composer-install:
+    desc: "Install composer dependencies"
+    dir: wordpress-core
+    cmds:
+      - composer install --no-interaction
+
+  composer-update:
+    desc: "Update composer dependencies"
+    dir: wordpress-core
+    cmds:
+      - composer update --no-interaction
+
+  start:
+    desc: "Start WordPress Playground containers"
+    deps: [create-env-files, create-networks, create-log-dirs]
+    cmds:
+      - export DOCKER_PLATFORM=linux/amd64 && docker compose -f {{.COMPOSE_FILE}} --project-name {{.PROJECT_NAME}} up -d --remove-orphans
+      - echo "WordPress Playground started at https://playground.finder.dev"
+
+  stop:
+    desc: "Stop WordPress Playground containers"
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} --project-name {{.PROJECT_NAME}} down --volumes --remove-orphans
+
+  restart:
+    desc: "Restart WordPress Playground containers"
+    cmds:
+      - task: stop
+      - task: start
+
+  logs:
+    desc: "View container logs (use -- -f for follow mode)"
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} --project-name {{.PROJECT_NAME}} logs {{.CLI_ARGS}}
+
+  logs-php:
+    desc: "View PHP-FPM container logs"
+    cmds:
+      - docker logs wp-playground-php-fpm {{.CLI_ARGS}}
+
+  logs-nginx:
+    desc: "View Nginx container logs"
+    cmds:
+      - docker logs wp-playground-nginx {{.CLI_ARGS}}
+
+  shell:
+    desc: "Open shell in PHP-FPM container"
+    cmds:
+      - docker exec -it wp-playground-php-fpm /bin/bash
+
+  shell-nginx:
+    desc: "Open shell in Nginx container"
+    cmds:
+      - docker exec -it wp-playground-nginx /bin/sh
+
+  status:
+    desc: "Show status of WordPress Playground containers"
+    cmds:
+      - docker compose -f {{.COMPOSE_FILE}} --project-name {{.PROJECT_NAME}} ps
+
+  db-create:
+    desc: "Create the WordPress Playground database"
+    cmds:
+      - |
+        docker exec coeval-mysql mysql -uroot -e "CREATE DATABASE IF NOT EXISTS wp_playground_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+        echo "Database wp_playground_db created (or already exists)"
+
+  db-seed:
+    desc: "Seed database from db_backups/seed.sql"
+    cmds:
+      - |
+        if [ ! -f db_backups/seed.sql ]; then
+          echo "Error: db_backups/seed.sql not found"
+          exit 1
+        fi
+        docker exec coeval-mysql mysql -uroot -e "DROP DATABASE IF EXISTS wp_playground_db; CREATE DATABASE wp_playground_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+        docker exec -i coeval-mysql mysql -uroot wp_playground_db < db_backups/seed.sql
+        echo "Database seeded from db_backups/seed.sql"
+
+  db-backup:
+    desc: "Backup database to db_backups/"
+    cmds:
+      - mkdir -p db_backups
+      - docker exec coeval-mysql mysqldump -uroot wp_playground_db > db_backups/backup-$(date +%Y%m%d-%H%M%S).sql
+      - echo "Database backed up"
+
+  db-drop:
+    desc: "Drop the WordPress Playground database (DESTRUCTIVE)"
+    cmds:
+      - |
+        read -p "Are you sure you want to drop wp_playground_db? (y/N) " confirm
+        if [ "$confirm" = "y" ]; then
+          docker exec coeval-mysql mysql -uroot -e "DROP DATABASE IF EXISTS wp_playground_db;"
+          echo "Database wp_playground_db dropped"
+        else
+          echo "Aborted"
+        fi
+
+  db-shell:
+    desc: "Open MySQL shell connected to the playground database"
+    cmds:
+      - docker exec -it coeval-mysql mysql -uroot wp_playground_db
+
+  xdebug-enable:
+    desc: "Enable Xdebug for debugging"
+    cmds:
+      - |
+        if grep -q '^XDEBUG_MODE=' config/playground.local.env 2>/dev/null; then
+          sed -i '' 's/^XDEBUG_MODE=.*/XDEBUG_MODE=debug/' config/playground.local.env
+        else
+          echo 'XDEBUG_MODE=debug' >> config/playground.local.env
+        fi
+        echo "Xdebug enabled. Run 'task restart' to apply."
+
+  xdebug-disable:
+    desc: "Disable Xdebug"
+    cmds:
+      - |
+        if grep -q '^XDEBUG_MODE=' config/playground.local.env 2>/dev/null; then
+          sed -i '' 's/^XDEBUG_MODE=.*/XDEBUG_MODE=off/' config/playground.local.env
+        else
+          echo 'XDEBUG_MODE=off' >> config/playground.local.env
+        fi
+        echo "Xdebug disabled. Run 'task restart' to apply."
+
+  clean:
+    desc: "Remove all containers, networks, and volumes"
+    cmds:
+      - task: stop
+      - echo "Cleanup complete (wp-playground network removed by docker-compose down)"

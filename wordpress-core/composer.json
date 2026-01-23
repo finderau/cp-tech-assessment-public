@@ -1,0 +1,20 @@
+{
+    "name": "finder/wp-playground",
+    "description": "WP playground",
+    "require": {
+        "johnpbloch/wordpress": "^6.9",
+        "guzzlehttp/guzzle": "^7.10",
+        "predis/predis": "^3.3",
+        "twig/twig": "^3.22"
+    },
+    "autoload": {
+        "psr-4": {
+            "Finder\\WpPlayground\\": "src/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "johnpbloch/wordpress-core-installer": true
+        }
+    }
+}

@@ -1,0 +1,5 @@
+# WordPress Playground - Development Environment
+# Disallow all crawlers
+
+User-agent: *
+Disallow: /

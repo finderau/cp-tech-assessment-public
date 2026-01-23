@@ -1,0 +1,21 @@
+# IDE and editor
+.cursor
+.idea
+.vscode
+
+# Environment files (secrets)
+.env
+config/playground.secrets.env
+config/playground.local.env
+
+# Dependencies (installed via composer/npm)
+wordpress-core/vendor/
+wordpress-core/wordpress/
+node_modules/
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db

@@ -1,0 +1,109 @@
+services:
+  wp-playground-nginx:
+    container_name: 'wp-playground-nginx'
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    image: wp-playground-nginx:local
+    restart: always
+    platform: ${DOCKER_PLATFORM-}
+    networks:
+      - traefik
+      - wp-playground
+    links:
+      - wp-playground-php-fpm:php-fpm
+    environment:
+      NGINX_FCGI_HOSTNAME: php-fpm
+    depends_on:
+      - wp-playground-php-fpm
+    volumes:
+      - type: bind
+        source: ./nginx/includes/
+        target: /etc/nginx/templates/
+        consistency: delegated
+      - type: bind
+        source: ./nginx/nginx-site.conf
+        target: /etc/nginx/conf.d/default.conf
+        consistency: delegated
+      - type: bind
+        source: ./wordpress-core/wordpress
+        target: /var/www/src/wordpress
+        consistency: delegated
+      - type: bind
+        source: ./wordpress-core/vendor
+        target: /var/www/src/vendor
+        consistency: delegated
+      - type: bind
+        source: ./www
+        target: /var/www/src
+        consistency: delegated
+      # Mount mu-plugins into WordPress's wp-content
+      - type: bind
+        source: ./wordpress-core/src/mu-plugins
+        target: /var/www/src/wordpress/wp-content/mu-plugins
+        consistency: delegated
+      # Add custom themes/plugins as individual mounts, e.g.:
+      # - ./wordpress-core/src/themes/my-theme:/var/www/src/wordpress/wp-content/themes/my-theme
+      # - ./wordpress-core/src/plugins/my-plugin:/var/www/src/wordpress/wp-content/plugins/my-plugin
+      - ${DEVHOME:-~}/logs/wp-playground:/var/log/nginx
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.wp-playground.rule=Host(`playground.finder.dev`)
+      - traefik.http.routers.wp-playground.entrypoints=websecure
+      - traefik.http.routers.wp-playground.tls=true
+      - traefik.http.services.wp-playground.loadbalancer.server.port=80
+
+  wp-playground-php-fpm:
+    container_name: 'wp-playground-php-fpm'
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    image: wp-playground-php-fpm:local
+    restart: always
+    platform: ${DOCKER_PLATFORM-}
+    networks:
+      - mysql
+      - redis
+      - wp-playground
+    env_file:
+      - ./config/playground.defaults.env
+      - ./config/playground.secrets.env
+      - ./config/playground.local.env
+    volumes:
+      - type: bind
+        source: ./config/xdebug.ini
+        target: /usr/local/etc/php/conf.d/20-xdebug.ini
+        consistency: delegated
+      - type: bind
+        source: ./wordpress-core/wordpress
+        target: /var/www/src/wordpress
+        consistency: delegated
+      - type: bind
+        source: ./wordpress-core/vendor
+        target: /var/www/src/vendor
+        consistency: delegated
+      - type: bind
+        source: ./www
+        target: /var/www/src
+        consistency: delegated
+      # Mount mu-plugins into WordPress's wp-content
+      - type: bind
+        source: ./wordpress-core/src/mu-plugins
+        target: /var/www/src/wordpress/wp-content/mu-plugins
+        consistency: delegated
+      # Add custom themes/plugins as individual mounts, e.g.:
+      # - ./wordpress-core/src/themes/my-theme:/var/www/src/wordpress/wp-content/themes/my-theme
+      # - ./wordpress-core/src/plugins/my-plugin:/var/www/src/wordpress/wp-content/plugins/my-plugin
+      - ${DEVHOME:-~}/logs/wp-playground:/var/log/php-fpm
+    labels:
+      - traefik.enable=false
+
+networks:
+  wp-playground:
+    name: wp-playground
+  mysql:
+    external: true
+  redis:
+    external: true
+  traefik:
+    external: true

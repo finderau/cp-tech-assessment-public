@@ -1,0 +1,53 @@
+# Traefik Configuration for WordPress Playground Standalone
+# Simplified configuration without external dependencies
+
+################################################################
+# API and dashboard configuration
+################################################################
+
+[api]
+  dashboard = true
+  insecure = true
+
+################################################################
+# Entry Points configuration
+################################################################
+
+[entryPoints]
+  [entryPoints.web]
+    address = ":80"
+    [entryPoints.web.http.redirections.entryPoint]
+      to = "websecure"
+      scheme = "https"
+
+  [entryPoints.websecure]
+    address = ":443"
+    [entryPoints.websecure.http]
+      [entryPoints.websecure.http.tls]
+
+################################################################
+# Docker configuration backend
+################################################################
+
+[providers.docker]
+  endpoint = "unix:///var/run/docker.sock"
+  watch = true
+  network = "wp-playground-internal"
+  exposedByDefault = false
+
+################################################################
+# File provider for dynamic configuration (TLS certificates)
+################################################################
+
+[providers.file]
+  filename = "/etc/traefik/dynamic.toml"
+  watch = true
+
+################################################################
+# Logging
+################################################################
+
+[log]
+  level = "INFO"
+
+[accessLog]

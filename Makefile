@@ -53,6 +53,11 @@ help:
 	@echo "Cleanup:"
 	@echo "  make clean              - Remove containers and networks"
 	@echo ""
+	@echo "Standalone Mode (run 'make standalone-help' for full list):"
+	@echo "  make standalone-setup   - Setup standalone environment (includes MySQL + Traefik)"
+	@echo "  make standalone-start   - Start standalone environment"
+	@echo "  make standalone-stop    - Stop standalone environment"
+	@echo ""
 .PHONY: help
 
 #
@@ -214,3 +219,94 @@ db-shell:
 clean: stop
 	@echo "Cleanup complete (wp-playground network removed by docker-compose down)"
 .PHONY: clean
+
+# ===========================================
+# Standalone Mode (includes MySQL + Traefik)
+# ===========================================
+# Use these targets when running without the root dev environment
+
+STANDALONE_COMPOSE_FILE := docker-compose-standalone.yml
+STANDALONE_PROJECT_NAME := wp-playground-standalone
+STANDALONE_DB_CONTAINER := wp-playground-mysql
+
+standalone-help:
+	@echo ""
+	@echo "Standalone Mode Commands (includes MySQL + Traefik):"
+	@echo "  make standalone-setup   - Initial standalone setup"
+	@echo "  make standalone-start   - Start all containers (MySQL, Redis, Traefik, WordPress)"
+	@echo "  make standalone-stop    - Stop all containers"
+	@echo "  make standalone-restart - Restart all containers"
+	@echo "  make standalone-status  - Show container status"
+	@echo "  make standalone-logs    - View container logs"
+	@echo "  make standalone-clean   - Remove containers, networks, and volumes"
+	@echo ""
+	@echo "Prerequisites:"
+	@echo "  1. Generate SSL certs: see traefik/README.md"
+	@echo "  2. Add to /etc/hosts: 127.0.0.1 playground.finder.dev"
+	@echo ""
+.PHONY: standalone-help
+
+standalone-setup: create-env-files standalone-create-log-dirs composer-install create-src-dir
+	@echo ""
+	@echo "Standalone setup complete!"
+	@echo ""
+	@echo "Next steps:"
+	@echo "  1. Generate SSL certificates (see traefik/README.md)"
+	@echo "  2. Add '127.0.0.1 playground.finder.dev' to /etc/hosts"
+	@echo "  3. Run 'make standalone-start' to start all containers"
+	@echo ""
+.PHONY: standalone-setup
+
+standalone-create-log-dirs:
+	@mkdir -p logs/nginx logs/php-fpm
+	@echo "Log directories created"
+.PHONY: standalone-create-log-dirs
+
+standalone-build:
+	@docker compose -f $(STANDALONE_COMPOSE_FILE) --project-name $(STANDALONE_PROJECT_NAME) build
+	@echo "Docker images built"
+.PHONY: standalone-build
+
+standalone-start: check-env-files standalone-create-log-dirs
+	@export DOCKER_PLATFORM=linux/amd64 && \
+	docker compose -f $(STANDALONE_COMPOSE_FILE) --project-name $(STANDALONE_PROJECT_NAME) up -d --remove-orphans
+	@echo ""
+	@echo "WordPress Playground (standalone) started!"
+	@echo "  - Site: https://playground.finder.dev"
+	@echo "  - Traefik Dashboard: http://localhost:8080"
+	@echo ""
+.PHONY: standalone-start
+
+standalone-stop:
+	@docker compose -f $(STANDALONE_COMPOSE_FILE) --project-name $(STANDALONE_PROJECT_NAME) down --remove-orphans
+.PHONY: standalone-stop
+
+standalone-restart: standalone-stop standalone-start
+.PHONY: standalone-restart
+
+standalone-status:
+	@docker compose -f $(STANDALONE_COMPOSE_FILE) --project-name $(STANDALONE_PROJECT_NAME) ps
+.PHONY: standalone-status
+
+standalone-logs:
+	@docker compose -f $(STANDALONE_COMPOSE_FILE) --project-name $(STANDALONE_PROJECT_NAME) logs -f
+.PHONY: standalone-logs
+
+standalone-shell:
+	@docker exec -it $(PHP_CONTAINER) /bin/sh
+.PHONY: standalone-shell
+
+standalone-db-shell:
+	@docker exec -it $(STANDALONE_DB_CONTAINER) mysql -uroot -pabcd1234 $(DB_NAME)
+.PHONY: standalone-db-shell
+
+standalone-db-create:
+	@docker exec $(STANDALONE_DB_CONTAINER) mysql -uroot -pabcd1234 -e \
+		"CREATE DATABASE IF NOT EXISTS $(DB_NAME) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+	@echo "Database $(DB_NAME) created (or already exists)"
+.PHONY: standalone-db-create
+
+standalone-clean: standalone-stop
+	@docker compose -f $(STANDALONE_COMPOSE_FILE) --project-name $(STANDALONE_PROJECT_NAME) down --volumes --remove-orphans
+	@echo "Standalone cleanup complete (containers, networks, and volumes removed)"
+.PHONY: standalone-clean

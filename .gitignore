@@ -1,21 +1,51 @@
-# IDE and editor
-.cursor
-.idea
-.vscode
+# WordPress Playground - Git Ignore
 
-# Environment files (secrets)
-.env
-config/playground.secrets.env
-config/playground.local.env
+# Environment files with secrets
+config/*.secrets.env
+config/*.local.env
 
-# Dependencies (installed via composer/npm)
+# Composer dependencies (can be regenerated)
 wordpress-core/vendor/
+
+# WordPress core files (can be regenerated via composer)
 wordpress-core/wordpress/
-node_modules/
+
+# SSL certificates (generate locally)
+traefik/ssl/*.crt
+traefik/ssl/*.key
+traefik/ssl/*.pem
+traefik/ssl/*.csr
+
+# Database backups (may contain sensitive data)
+db_backups/*.sql
 
 # Logs
 *.log
+logs/
+
+# IDE and editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
 
 # OS files
 .DS_Store
 Thumbs.db
+
+# PHP debugging
+cachegrind/
+*.cachegrind
+
+# Node modules (if any frontend build is added)
+node_modules/
+
+# Build artifacts
+dist/
+build/
+
+# Temporary files
+tmp/
+temp/
+*.tmp

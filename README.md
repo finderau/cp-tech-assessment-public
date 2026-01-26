@@ -205,6 +205,134 @@ make db-create
 2. Follow the WordPress installation wizard
 3. Create your admin account
 
+## Standalone Mode (Self-Contained Environment)
+
+If you don't have access to the parent development environment (coeval-mysql, redis, traefik), you can run WordPress Playground in standalone mode, which includes all dependencies.
+
+### Standalone Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                    wp-playground-standalone                      │
+│  ┌────────────────────────────────────────────────────────────┐ │
+│  │                   wp-playground-traefik                     │ │
+│  │              https://playground.finder.dev:443              │ │
+│  │                Dashboard: http://localhost:8080             │ │
+│  └────────────────────────────────────────────────────────────┘ │
+│                              │                                   │
+│              ┌───────────────┴───────────────┐                  │
+│              ▼                               ▼                  │
+│  ┌─────────────────────────┐     ┌─────────────────────────┐   │
+│  │   wp-playground-nginx   │     │  wp-playground-php-fpm  │   │
+│  │      (nginx:alpine)     │────▶│       (php:8.3-fpm)     │   │
+│  └─────────────────────────┘     └─────────────────────────┘   │
+│                                          │                      │
+│                    ┌─────────────────────┼─────────────────┐   │
+│                    ▼                     ▼                 │   │
+│          ┌─────────────────┐   ┌─────────────────┐        │   │
+│          │wp-playground-   │   │wp-playground-   │        │   │
+│          │     mysql       │   │     redis       │        │   │
+│          │    :3308        │   │    :6380        │        │   │
+│          └─────────────────┘   └─────────────────┘        │   │
+└─────────────────────────────────────────────────────────────────┘
+```
+
+### Standalone Prerequisites
+
+- **Docker** (with Docker Compose v2)
+- **Composer** (for PHP dependency management)
+- **mkcert** (recommended for SSL certificates) or **OpenSSL**
+
+### Standalone Quick Start
+
+```bash
+# 1. Run standalone setup
+make standalone-setup
+
+# 2. Generate SSL certificates
+cd traefik/ssl
+
+# Option A: Using mkcert (recommended - creates trusted certs)
+brew install mkcert        # macOS
+mkcert -install            # Install local CA (one-time)
+mkcert playground.finder.dev
+mv playground.finder.dev.pem playground.crt
+mv playground.finder.dev-key.pem playground.key
+
+# Option B: Using OpenSSL (browser will show security warning)
+openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+  -keyout playground.key -out playground.crt \
+  -subj "/CN=playground.finder.dev"
+
+cd ../..
+
+# 3. Add DNS entry
+echo "127.0.0.1 playground.finder.dev" | sudo tee -a /etc/hosts
+
+# 4. Start all services
+make standalone-start
+
+# 5. Create database (auto-created, but run if needed)
+make standalone-db-create
+
+# 6. Access WordPress
+# Site: https://playground.finder.dev/
+# Traefik Dashboard: http://localhost:8080
+```
+
+### Standalone Commands
+
+```bash
+make standalone-help       # Show all standalone commands
+
+# Lifecycle
+make standalone-setup      # Initial setup
+make standalone-start      # Start all containers
+make standalone-stop       # Stop all containers  
+make standalone-restart    # Restart containers
+make standalone-status     # Show container status
+make standalone-logs       # View logs (follow mode)
+
+# Development
+make standalone-shell      # Shell into PHP container
+make standalone-db-shell   # MySQL shell
+make standalone-db-create  # Create database
+
+# Cleanup
+make standalone-clean      # Remove containers, networks, and volumes
+```
+
+### Standalone vs Standard Mode
+
+| Feature | Standard Mode | Standalone Mode |
+|---------|--------------|-----------------|
+| Compose file | `docker-compose.yml` | `docker-compose-standalone.yml` |
+| MySQL | External (`coeval-mysql`) | Included (`wp-playground-mysql`) |
+| Redis | External (`redis`) | Included (`wp-playground-redis`) |
+| Traefik | External (`traefik`) | Included (`wp-playground-traefik`) |
+| SSL Certs | Shared from parent | Generate locally |
+| MySQL Port | 3308 (external) | 3308 |
+| Redis Port | 6379 (external) | 6380 |
+| Traefik Dashboard | N/A | http://localhost:8080 |
+
+### Switching Between Modes
+
+To switch from standalone to standard mode (or vice versa):
+
+```bash
+# Stop current mode
+make standalone-stop   # if using standalone
+# OR
+make stop              # if using standard
+
+# Start the other mode
+make start             # for standard mode
+# OR
+make standalone-start  # for standalone mode
+```
+
+**Note:** Both modes use the same database name (`wp_playground_db`) but different MySQL containers. Data is not shared between modes.
+
 ## Available Commands
 
 ### Using Make

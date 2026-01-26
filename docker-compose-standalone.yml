@@ -1,0 +1,187 @@
+# WordPress Playground - Standalone Docker Compose
+# Includes MySQL and Traefik for environments without the root dev setup
+#
+# Usage:
+#   docker compose -f docker-compose-standalone.yml up -d
+#
+# Prerequisites:
+#   1. Generate SSL certificates (see traefik/README.md)
+#   2. Add "127.0.0.1 playground.finder.dev" to /etc/hosts
+
+services:
+  # ===========================================
+  # Infrastructure Services
+  # ===========================================
+
+  mysql:
+    container_name: 'wp-playground-mysql'
+    image: mysql:8.0
+    restart: always
+    ports:
+      - "3308:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: abcd1234
+      MYSQL_DATABASE: wp_playground_db
+    command:
+      - mysqld
+      - --max_allowed_packet=128M
+      - --tls-version=TLSv1.2
+      - --disable-log-bin
+      - --sql_mode=
+    networks:
+      - wp-playground-internal
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-pabcd1234"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    container_name: 'wp-playground-redis'
+    image: redis:7.0-alpine
+    restart: always
+    ports:
+      - "6380:6379"
+    networks:
+      - wp-playground-internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  traefik:
+    container_name: 'wp-playground-traefik'
+    image: traefik:v2.11
+    restart: always
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8080:8080"  # Traefik dashboard
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - ./traefik/traefik.toml:/etc/traefik/traefik.toml:ro
+      - ./traefik/dynamic.toml:/etc/traefik/dynamic.toml:ro
+      - ./traefik/ssl:/etc/ssl/traefik:ro
+    networks:
+      - wp-playground-internal
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.traefik-dashboard.rule=Host(`traefik.playground.local`)
+      - traefik.http.routers.traefik-dashboard.service=api@internal
+      - traefik.http.routers.traefik-dashboard.entrypoints=websecure
+      - traefik.http.routers.traefik-dashboard.tls=true
+
+  # ===========================================
+  # WordPress Playground Services
+  # ===========================================
+
+  wp-playground-nginx:
+    container_name: 'wp-playground-nginx'
+    build:
+      context: .
+      dockerfile: docker/nginx/Dockerfile
+    image: wp-playground-nginx:local
+    restart: always
+    platform: ${DOCKER_PLATFORM:-linux/amd64}
+    networks:
+      - wp-playground-internal
+    links:
+      - wp-playground-php-fpm:php-fpm
+    environment:
+      NGINX_FCGI_HOSTNAME: php-fpm
+    depends_on:
+      wp-playground-php-fpm:
+        condition: service_started
+    volumes:
+      - type: bind
+        source: ./nginx/includes/
+        target: /etc/nginx/templates/
+        consistency: delegated
+      - type: bind
+        source: ./nginx/nginx-site.conf
+        target: /etc/nginx/conf.d/default.conf
+        consistency: delegated
+      - type: bind
+        source: ./wordpress-core/wordpress
+        target: /var/www/src/wordpress
+        consistency: delegated
+      - type: bind
+        source: ./wordpress-core/vendor
+        target: /var/www/src/vendor
+        consistency: delegated
+      - type: bind
+        source: ./www
+        target: /var/www/src
+        consistency: delegated
+      - type: bind
+        source: ./wordpress-core/src/mu-plugins
+        target: /var/www/src/wordpress/wp-content/mu-plugins
+        consistency: delegated
+      - ./logs/nginx:/var/log/nginx
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.wp-playground.rule=Host(`playground.finder.dev`)
+      - traefik.http.routers.wp-playground.entrypoints=websecure
+      - traefik.http.routers.wp-playground.tls=true
+      - traefik.http.services.wp-playground.loadbalancer.server.port=80
+
+  wp-playground-php-fpm:
+    container_name: 'wp-playground-php-fpm'
+    build:
+      context: .
+      dockerfile: docker/php/Dockerfile
+    image: wp-playground-php-fpm:local
+    restart: always
+    platform: ${DOCKER_PLATFORM:-linux/amd64}
+    networks:
+      - wp-playground-internal
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    env_file:
+      - ./config/playground.defaults.env
+      - ./config/playground.secrets.env
+      - ./config/playground.local.env
+    environment:
+      # Override defaults for standalone mode
+      DB_HOST: mysql
+      REDIS_DB_HOST: redis
+      REDIS_OBJECT_CACHE_DB_HOST: redis
+    volumes:
+      - type: bind
+        source: ./config/xdebug.ini
+        target: /usr/local/etc/php/conf.d/20-xdebug.ini
+        consistency: delegated
+      - type: bind
+        source: ./wordpress-core/wordpress
+        target: /var/www/src/wordpress
+        consistency: delegated
+      - type: bind
+        source: ./wordpress-core/vendor
+        target: /var/www/src/vendor
+        consistency: delegated
+      - type: bind
+        source: ./www
+        target: /var/www/src
+        consistency: delegated
+      - type: bind
+        source: ./wordpress-core/src/mu-plugins
+        target: /var/www/src/wordpress/wp-content/mu-plugins
+        consistency: delegated
+      - ./logs/php-fpm:/var/log/php-fpm
+    labels:
+      - traefik.enable=false
+
+networks:
+  wp-playground-internal:
+    name: wp-playground-internal
+    driver: bridge
+
+volumes:
+  mysql_data:
+    name: wp-playground-mysql-data

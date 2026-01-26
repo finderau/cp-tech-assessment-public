@@ -1,0 +1,6 @@
+# Dynamic TLS configuration for WordPress Playground
+# Certificates should be placed in traefik/ssl/
+
+[[tls.certificates]]
+  certFile = "/etc/ssl/traefik/playground.crt"
+  keyFile = "/etc/ssl/traefik/playground.key"

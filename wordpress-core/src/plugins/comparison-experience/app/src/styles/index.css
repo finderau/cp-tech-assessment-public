@@ -1,0 +1,123 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base styles for the comparison experience */
+.comparison-experience {
+  @apply font-sans text-gray-900 antialiased;
+}
+
+/* Custom scrollbar for horizontal scroll */
+.comparison-experience ::-webkit-scrollbar {
+  @apply h-2;
+}
+
+.comparison-experience ::-webkit-scrollbar-track {
+  @apply bg-gray-100 rounded-full;
+}
+
+.comparison-experience ::-webkit-scrollbar-thumb {
+  @apply bg-gray-300 rounded-full hover:bg-gray-400;
+}
+
+/* Product card styles */
+.product-card {
+  @apply bg-white rounded-lg border border-gray-200 p-4 min-w-[280px] max-w-[300px] flex flex-col;
+}
+
+/* Filter group styles */
+.filter-group {
+  @apply border-b border-gray-200 py-4 last:border-b-0;
+}
+
+.filter-group-header {
+  @apply flex items-center justify-between cursor-pointer;
+}
+
+.filter-group-title {
+  @apply text-sm font-medium text-gray-900;
+}
+
+/* Badge styles */
+.badge {
+  @apply inline-flex items-center px-2 py-0.5 rounded text-xs font-medium;
+}
+
+.badge-basic {
+  @apply bg-gray-100 text-gray-700;
+}
+
+.badge-promoted {
+  @apply bg-amber-100 text-amber-800;
+}
+
+/* Detail section styles */
+.detail-section {
+  @apply border-t border-gray-100;
+}
+
+.detail-section-header {
+  @apply flex items-center justify-between py-3 cursor-pointer hover:bg-gray-50 -mx-4 px-4;
+}
+
+.detail-section-content {
+  @apply pb-3;
+}
+
+/* Availability indicators */
+.availability-icon {
+  @apply w-5 h-5 flex-shrink-0;
+}
+
+.availability-available {
+  @apply text-green-500;
+}
+
+.availability-unavailable {
+  @apply text-red-400;
+}
+
+.availability-restricted {
+  @apply text-amber-500;
+}
+
+/* Price block */
+.price-block {
+  @apply bg-primary-600 text-white rounded-lg p-4 text-center;
+}
+
+.price-amount {
+  @apply text-2xl font-bold;
+}
+
+.price-period {
+  @apply text-sm opacity-90;
+}
+
+/* CTA button */
+.cta-button {
+  @apply w-full py-3 px-4 bg-primary-600 text-white font-semibold rounded-lg hover:bg-primary-700 transition-colors;
+}
+
+/* Loading skeleton */
+.skeleton {
+  @apply animate-pulse bg-gray-200 rounded;
+}
+
+/* Mobile filter drawer overlay */
+.filter-drawer-overlay {
+  @apply fixed inset-0 bg-black bg-opacity-50 z-40 transition-opacity;
+}
+
+/* Mobile filter drawer */
+.filter-drawer {
+  @apply fixed inset-y-0 left-0 w-80 max-w-[85vw] bg-white z-50 transform transition-transform shadow-xl;
+}
+
+.filter-drawer-enter {
+  @apply -translate-x-full;
+}
+
+.filter-drawer-enter-active {
+  @apply translate-x-0;
+}

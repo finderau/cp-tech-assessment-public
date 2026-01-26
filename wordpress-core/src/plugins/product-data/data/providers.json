@@ -1,0 +1,38 @@
+[
+  {
+    "id": "provider-id-1",
+    "providerName": "Wellness Shield Insurance"
+  },
+  {
+    "id": "provider-id-2",
+    "providerName": "ClearPath Health"
+  },
+  {
+    "id": "provider-id-3",
+    "providerName": "Guardian Care Funds"
+  },
+  {
+    "id": "provider-id-4",
+    "providerName": "Horizon Benefits Group"
+  },
+  {
+    "id": "provider-id-5",
+    "providerName": "United Care Partners"
+  },
+  {
+    "id": "provider-id-6",
+    "providerName": "Premier Health Alliance"
+  },
+  {
+    "id": "provider-id-7",
+    "providerName": "SkyGuard Health Insurance"
+  },
+  {
+    "id": "provider-id-8",
+    "providerName": "TrustMed Insurance"
+  },
+  {
+    "id": "provider-id-9",
+    "providerName": "FlexCare by Horizon"
+  }
+]

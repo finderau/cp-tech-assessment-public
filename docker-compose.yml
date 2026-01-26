@@ -42,9 +42,17 @@ services:
         source: ./wordpress-core/src/mu-plugins
         target: /var/www/src/wordpress/wp-content/mu-plugins
         consistency: delegated
-      # Add custom themes/plugins as individual mounts, e.g.:
+      # Custom plugins
+      - type: bind
+        source: ./wordpress-core/src/plugins/comparison-experience
+        target: /var/www/src/wordpress/wp-content/plugins/comparison-experience
+        consistency: delegated
+      - type: bind
+        source: ./wordpress-core/src/plugins/product-data
+        target: /var/www/src/wordpress/wp-content/plugins/product-data
+        consistency: delegated
+      # Add custom themes as individual mounts, e.g.:
       # - ./wordpress-core/src/themes/my-theme:/var/www/src/wordpress/wp-content/themes/my-theme
-      # - ./wordpress-core/src/plugins/my-plugin:/var/www/src/wordpress/wp-content/plugins/my-plugin
       - ${DEVHOME:-~}/logs/wp-playground:/var/log/nginx
     labels:
       - traefik.enable=true
@@ -91,9 +99,17 @@ services:
         source: ./wordpress-core/src/mu-plugins
         target: /var/www/src/wordpress/wp-content/mu-plugins
         consistency: delegated
-      # Add custom themes/plugins as individual mounts, e.g.:
+      # Custom plugins
+      - type: bind
+        source: ./wordpress-core/src/plugins/comparison-experience
+        target: /var/www/src/wordpress/wp-content/plugins/comparison-experience
+        consistency: delegated
+      - type: bind
+        source: ./wordpress-core/src/plugins/product-data
+        target: /var/www/src/wordpress/wp-content/plugins/product-data
+        consistency: delegated
+      # Add custom themes as individual mounts, e.g.:
       # - ./wordpress-core/src/themes/my-theme:/var/www/src/wordpress/wp-content/themes/my-theme
-      # - ./wordpress-core/src/plugins/my-plugin:/var/www/src/wordpress/wp-content/plugins/my-plugin
       - ${DEVHOME:-~}/logs/wp-playground:/var/log/php-fpm
     labels:
       - traefik.enable=false

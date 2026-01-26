@@ -17,7 +17,7 @@ export function filterStateToApiFilters(state: FilterState): ApiFilter[] {
   if (state.providers.length > 0) {
     filters.push({
       field: 'providerName',
-      comparator: 'eq',
+      comparator: 'in',
       value: state.providers,
     });
   }

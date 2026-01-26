@@ -7,10 +7,25 @@
         "predis/predis": "^3.3",
         "twig/twig": "^3.22"
     },
+    "require-dev": {
+        "phpunit/phpunit": "^11.0"
+    },
     "autoload": {
         "psr-4": {
-            "Finder\\WpPlayground\\": "src/"
+            "Finder\\WpPlayground\\": "src/",
+            "Finder\\ProductData\\": "src/plugins/product-data/src/",
+            "Finder\\ComparisonExperience\\": "src/plugins/comparison-experience/src/"
         }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Finder\\ProductData\\Tests\\": "src/plugins/product-data/tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "test:unit": "phpunit --testsuite=unit",
+        "test:integration": "phpunit --testsuite=integration"
     },
     "config": {
         "allow-plugins": {

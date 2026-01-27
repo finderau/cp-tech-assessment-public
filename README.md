@@ -297,6 +297,7 @@ make standalone-logs       # View logs (follow mode)
 make standalone-shell      # Shell into PHP container
 make standalone-db-shell   # MySQL shell
 make standalone-db-create  # Create database
+make standalone-db-seed    # Seed database from db_backups/seed.sql
 
 # Cleanup
 make standalone-clean      # Remove containers, networks, and volumes

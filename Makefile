@@ -238,6 +238,10 @@ standalone-help:
 	@echo "  make standalone-restart - Restart all containers"
 	@echo "  make standalone-status  - Show container status"
 	@echo "  make standalone-logs    - View container logs"
+	@echo "  make standalone-shell   - Shell into PHP container"
+	@echo "  make standalone-db-shell  - MySQL shell"
+	@echo "  make standalone-db-create - Create database"
+	@echo "  make standalone-db-seed   - Seed database from db_backups/seed.sql"
 	@echo "  make standalone-clean   - Remove containers, networks, and volumes"
 	@echo ""
 	@echo "Prerequisites:"
@@ -305,6 +309,17 @@ standalone-db-create:
 		"CREATE DATABASE IF NOT EXISTS $(DB_NAME) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 	@echo "Database $(DB_NAME) created (or already exists)"
 .PHONY: standalone-db-create
+
+standalone-db-seed:
+	@if [ ! -f db_backups/seed.sql ]; then \
+		echo "Error: db_backups/seed.sql not found"; \
+		exit 1; \
+	fi
+	@docker exec $(STANDALONE_DB_CONTAINER) mysql -uroot -pabcd1234 -e \
+		"DROP DATABASE IF EXISTS $(DB_NAME); CREATE DATABASE $(DB_NAME) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+	@docker exec -i $(STANDALONE_DB_CONTAINER) mysql -uroot -pabcd1234 $(DB_NAME) < db_backups/seed.sql
+	@echo "Database seeded from db_backups/seed.sql"
+.PHONY: standalone-db-seed
 
 standalone-clean: standalone-stop
 	@docker compose -f $(STANDALONE_COMPOSE_FILE) --project-name $(STANDALONE_PROJECT_NAME) down --volumes --remove-orphans
